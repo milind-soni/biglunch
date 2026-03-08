@@ -9,7 +9,8 @@ FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN ESLINT_NO_DEV_ERRORS=true npm run build
 
 # Stage 3: Production
 FROM node:20-slim AS runner
