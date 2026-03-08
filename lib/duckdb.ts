@@ -1,5 +1,5 @@
 import { Database } from "duckdb-async";
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import path from "path";
 
 let db: Database | null = null;
@@ -57,6 +57,16 @@ async function loadParquetData(database: Database) {
   }
 }
 
+function loadAnnotations(): Record<string, { description?: string; columns?: Record<string, string> }> {
+  try {
+    const filePath = path.join(process.cwd(), "data", "annotations.json");
+    if (!existsSync(filePath)) return {};
+    return JSON.parse(readFileSync(filePath, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
 export async function getSchemaContext(): Promise<string> {
   try {
     const tables = await queryDuckDB(
@@ -65,21 +75,33 @@ export async function getSchemaContext(): Promise<string> {
 
     if (tables.length === 0) return "No tables available.";
 
+    const annotations = loadAnnotations();
     const schemaLines: string[] = [];
 
     for (const table of tables) {
       const name = table.table_name as string;
       const type = table.table_type === "VIEW" ? "view" : "table";
+      const tableAnnotation = annotations[name];
 
       const columns = await queryDuckDB(
         `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = '${name}' ORDER BY ordinal_position`
       );
 
       const colStr = columns
-        .map((c) => `${c.column_name} (${c.data_type})`)
+        .map((c) => {
+          const colName = c.column_name as string;
+          const colDesc = tableAnnotation?.columns?.[colName];
+          return colDesc
+            ? `${colName} (${c.data_type}) — ${colDesc}`
+            : `${colName} (${c.data_type})`;
+        })
         .join(", ");
 
-      schemaLines.push(`**${name}** (${type})\nColumns: ${colStr}`);
+      const header = tableAnnotation?.description
+        ? `**${name}** (${type}) — ${tableAnnotation.description}`
+        : `**${name}** (${type})`;
+
+      schemaLines.push(`${header}\nColumns: ${colStr}`);
     }
 
     return schemaLines.join("\n\n");

@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, ChevronDown, ChevronRight, Settings } from "lucide-react";
+import { Send, Loader2, ChevronDown, ChevronRight, Settings, Database } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,11 @@ export default function Page() {
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
             DuckDB
           </span>
+          <Link href="/explore">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Explore data">
+              <Database className="h-4 w-4" />
+            </Button>
+          </Link>
           <Link href="/connections">
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Settings className="h-4 w-4" />
