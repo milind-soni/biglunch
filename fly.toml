@@ -1,14 +1,10 @@
-app = "biglunch-worker"
+app = "biglunch"
 primary_region = "bom"
 
 [build]
-  dockerfile = "pipelines/Dockerfile"
-  ignorefile = "pipelines/.dockerignore"
-
-[build.args]
 
 [http_service]
-  internal_port = 8080
+  internal_port = 3000
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true

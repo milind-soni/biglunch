@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
+import path from "path";
 import { reloadParquetData } from "@/lib/duckdb";
 
-export const maxDuration = 120;
+const execAsync = promisify(exec);
 
 export async function POST(req: Request) {
   const { connectionId, provider } = await req.json();
@@ -14,47 +17,48 @@ export async function POST(req: Request) {
   }
 
   const nangoSecretKey = process.env.NANGO_SECRET_KEY;
-  const workerUrl = process.env.WORKER_URL;
-  const workerSecret = process.env.WORKER_SECRET;
-
-  if (!nangoSecretKey || !workerUrl || !workerSecret) {
+  if (!nangoSecretKey) {
     return NextResponse.json(
-      { error: "Missing server configuration" },
+      { error: "NANGO_SECRET_KEY not configured" },
       { status: 500 }
     );
   }
 
+  const pipelinesDir = path.join(process.cwd(), "pipelines");
+  const dataDir = path.join(process.cwd(), "data");
+
   try {
-    const resp = await fetch(`${workerUrl}/sync`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${workerSecret}`,
-      },
-      body: JSON.stringify({
-        provider,
-        connection_id: connectionId,
-        nango_secret_key: nangoSecretKey,
-      }),
-    });
+    const { stdout, stderr } = await execAsync(
+      `uv run python sync.py --provider "${provider}" --nango-secret-key "${nangoSecretKey}" --connection-id "${connectionId}" --data-dir "${dataDir}"`,
+      {
+        cwd: pipelinesDir,
+        timeout: 120000,
+        env: {
+          ...process.env,
+          GOOGLE_ADS_DEVELOPER_TOKEN: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "",
+          AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || "",
+          AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || "",
+          AWS_REGION: process.env.AWS_REGION || "",
+          S3_BUCKET_NAME: process.env.S3_BUCKET_NAME || "",
+        },
+      }
+    );
 
-    if (!resp.ok) {
-      const error = await resp.text();
-      return NextResponse.json(
-        { status: "error", error },
-        { status: resp.status }
-      );
-    }
-
-    const result = await resp.json();
-
-    // Reload DuckDB views with new parquet data from S3
+    // Reload DuckDB views with new parquet data
     await reloadParquetData();
 
-    return NextResponse.json({ status: "success", ...result });
+    return NextResponse.json({
+      status: "success",
+      output: stdout,
+      warnings: stderr || undefined,
+    });
   } catch (error: any) {
     return NextResponse.json(
-      { status: "error", error: error.message },
+      {
+        status: "error",
+        error: error.message,
+        stderr: error.stderr,
+      },
       { status: 500 }
     );
   }
