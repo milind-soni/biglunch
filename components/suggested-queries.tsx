@@ -8,52 +8,40 @@ export const SuggestedQueries = ({
 }) => {
   const suggestionQueries = [
     {
-      desktop: "Compare count of unicorns in SF and NY over time",
-      mobile: "SF vs NY",
+      desktop: "Top 5 products by revenue",
+      mobile: "Top products",
     },
     {
-      desktop: "Compare unicorn valuations in the US vs China over time",
-      mobile: "US vs China",
+      desktop: "Ad spend vs conversions by platform",
+      mobile: "Ad performance",
     },
     {
-      desktop: "Countries with highest unicorn density",
-      mobile: "Top countries",
+      desktop: "Revenue breakdown by sales channel",
+      mobile: "By channel",
     },
     {
-      desktop:
-        "Show the number of unicorns founded each year over the past two decades",
-      mobile: "Yearly count",
+      desktop: "Which ad campaign has the best ROAS?",
+      mobile: "Best ROAS",
     },
     {
-      desktop: "Display the cumulative total valuation of unicorns over time",
-      mobile: "Total value",
+      desktop: "Monthly revenue trend",
+      mobile: "Revenue trend",
     },
     {
-      desktop:
-        "Compare the yearly funding amounts for fintech vs healthtech unicorns",
-      mobile: "Fintech vs health",
+      desktop: "Customer acquisition cost by source",
+      mobile: "CAC by source",
     },
     {
-      desktop: "Which cities have with most SaaS unicorns",
-      mobile: "SaaS cities",
+      desktop: "Compare Shopify vs Amazon sales by category",
+      mobile: "Shopify vs Amazon",
     },
     {
-      desktop: "Show the countries with highest unicorn density",
-      mobile: "Dense nations",
+      desktop: "Revenue by region",
+      mobile: "By region",
     },
     {
-      desktop:
-        "Show the number of unicorns (grouped by year) over the past decade",
-      mobile: "Decade trend",
-    },
-    {
-      desktop:
-        "Compare the average valuation of AI companies vs. biotech companies",
-      mobile: "AI vs biotech",
-    },
-    {
-      desktop: "Investors with the most unicorns",
-      mobile: "Top investors",
+      desktop: "Top customers by lifetime value",
+      mobile: "Top customers",
     },
   ];
 
@@ -67,7 +55,7 @@ export const SuggestedQueries = ({
       className="h-full overflow-y-auto"
     >
       <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-        Try these queries:
+        Ask anything about your data:
       </h2>
       <div className="flex flex-wrap gap-2">
         {suggestionQueries.map((suggestion, index) => (

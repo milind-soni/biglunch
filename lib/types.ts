@@ -1,14 +1,19 @@
-export type Unicorn = {
-  id: number;
-  company: string;
-  valuation: number;
-  date_joined: Date | null;
-  country: string;
-  city: string;
-  industry: string;
-  select_investors: string;
-};
-
 export type Result = Record<string, string | number>;
 
-export type Config = any;
+export type Config = {
+  type: "bar" | "line" | "area" | "pie";
+  xKey: string;
+  yKeys: string[];
+  title: string;
+  description: string;
+  takeaway: string;
+  legend: boolean;
+  multipleLines?: boolean;
+  lineCategories?: string[];
+  measurementColumn?: string;
+};
+
+export type QueryExplanation = {
+  section: string;
+  explanation: string;
+};

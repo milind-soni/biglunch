@@ -39,3 +39,9 @@ yarn-error.log*
 *.tsbuildinfo
 
 unicorns.csv
+
+# dlt pipeline data & state
+/data/
+/pipelines/.dlt/
+/pipelines/__pycache__/
+/pipelines/.venv/

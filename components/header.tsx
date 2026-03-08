@@ -1,5 +1,4 @@
 import { Moon, Sun } from "lucide-react";
-import { DeployButton } from "./deploy-button";
 import { Button } from "./ui/button";
 import { useTheme } from "next-themes";
 
@@ -12,9 +11,12 @@ export const Header = ({ handleClear }: { handleClear: () => void }) => {
         className="text-2xl sm:text-3xl font-bold text-foreground flex items-center cursor-pointer"
         onClick={() => handleClear()}
       >
-        Natural Language PostgreSQL
+        biglunch
       </h1>
       <div className="flex items-center justify-center space-x-2">
+        <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+          poc
+        </span>
         <Button
           variant="ghost"
           size="icon"
@@ -27,9 +29,6 @@ export const Header = ({ handleClear }: { handleClear: () => void }) => {
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>
-        <div className="hidden sm:block">
-          <DeployButton />
-        </div>
       </div>
     </div>
   );

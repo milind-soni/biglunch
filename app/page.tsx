@@ -1,167 +1,316 @@
 "use client";
 
-import { useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-
-import { Config, Result } from "@/lib/types";
-import { runGeneratedSQLQuery } from "./actions";
-
-import { Header } from "@/components/header";
-import { QueryViewer } from "@/components/query-viewer";
-import { ProjectInfo } from "@/components/project-info";
-import { Results } from "@/components/results";
-import { Search } from "@/components/search";
-import { SuggestedQueries } from "@/components/suggested-queries";
+import { Send, Loader2, ChevronDown, ChevronRight, Settings } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
 export default function Page() {
-  const [inputValue, setInputValue] = useState("");
+  const [input, setInput] = useState("");
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  });
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(1);
+  const isLoading = status === "submitted" || status === "streaming";
 
-  const [activeQuery, setActiveQuery] = useState("");
-  const [results, setResults] = useState<Result[]>([]);
-  const [columns, setColumns] = useState<string[]>([]);
-  const [chartConfig, setChartConfig] = useState<Config | null>(null);
-
-
-  const handleSubmit = async (suggestion?: string) => {
-    clearExistingData();
-
-    const question = suggestion ?? inputValue;
-    if (inputValue.length === 0 && !suggestion) return;
-
-
-    if (question.trim()) {
-      setSubmitted(true);
-    }
-
-    setLoading(true);
-    setLoadingStep(1);
-    setActiveQuery("");
-
-    try {
-      const query = "TODO - IMPLEMENT ABOVE"; // placeholder value
-
-      if (query === undefined) {
-        toast.error("An error occurred. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      setActiveQuery(query);
-      setLoadingStep(2);
-
-      const companies = await runGeneratedSQLQuery(query);
-      const columns = companies.length > 0 ? Object.keys(companies[0]) : [];
-      setResults(companies);
-      setColumns(columns);
-
-      setLoading(false);
-    } catch (e) {
-      toast.error("An error occurred. Please try again.");
-      setLoading(false);
-    }
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ text: input });
+    setInput("");
   };
 
-  const handleSuggestionClick = async (suggestion: string) => {
-    setInputValue(suggestion);
-    try {
-      await handleSubmit(suggestion);
-    } catch (e) {
-      toast.error("An error occurred. Please try again.");
-    }
+  const handleSuggestion = (q: string) => {
+    sendMessage({ text: q });
   };
 
-  const clearExistingData = () => {
-    setActiveQuery("");
-    setResults([]);
-    setColumns([]);
-    setChartConfig(null);
-  };
-
-  const handleClear = () => {
-    setSubmitted(false);
-    setInputValue("");
-    clearExistingData();
-  };
+  const suggestions = [
+    "Top 5 products by revenue",
+    "Ad spend vs conversions by platform",
+    "Which ad campaign has the best ROAS?",
+    "Monthly revenue trend",
+    "Compare Shopify vs Amazon sales",
+    "Top customers by lifetime value",
+  ];
 
   return (
-    <div className="bg-neutral-50 dark:bg-neutral-900 flex items-start justify-center p-0 sm:p-8">
-      <div className="w-full max-w-4xl min-h-dvh sm:min-h-0 flex flex-col ">
-        <motion.div
-          className="bg-card rounded-xl sm:border sm:border-border flex-grow flex flex-col"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <div className="p-6 sm:p-8 flex flex-col flex-grow">
-            <Header handleClear={handleClear} />
-            <Search
-              handleClear={handleClear}
-              handleSubmit={handleSubmit}
-              inputValue={inputValue}
-              setInputValue={setInputValue}
-              submitted={submitted}
-            />
-            <div
-              id="main-container"
-              className="flex-grow flex flex-col sm:min-h-[420px]"
+    <div className="flex flex-col h-dvh bg-background">
+      {/* Header */}
+      <header className="border-b border-border px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-foreground">biglunch</h1>
+          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+            poc
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+            DuckDB
+          </span>
+          <Link href="/connections">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          >
+            {mounted ? (theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />) : <Sun className="h-4 w-4" />}
+          </Button>
+        </div>
+      </header>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+          {messages.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center pt-24 text-center space-y-6"
             >
-              <div className="flex-grow h-full">
-                <AnimatePresence mode="wait">
-                  {!submitted ? (
-                    <SuggestedQueries
-                      handleSuggestionClick={handleSuggestionClick}
-                    />
-                  ) : (
-                    <motion.div
-                      key="results"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      layout
-                      className="sm:h-full min-h-[400px] flex flex-col"
-                    >
-                      <QueryViewer
-                        activeQuery={activeQuery}
-                        inputValue={inputValue}
-                      />
-                      {loading ? (
-                        <div className="h-full absolute bg-background/50 w-full flex flex-col items-center justify-center space-y-4">
-                          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                          <p className="text-foreground">
-                            {loadingStep === 1
-                              ? "Generating SQL query..."
-                              : "Running SQL query..."}
-                          </p>
-                        </div>
-                      ) : results.length === 0 ? (
-                        <div className="flex-grow flex items-center justify-center">
-                          <p className="text-center text-muted-foreground">
-                            No results found.
-                          </p>
-                        </div>
-                      ) : (
-                        <Results
-                          results={results}
-                          chartConfig={chartConfig}
-                          columns={columns}
-                        />
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-2">
+                  Ask anything about your data
+                </h2>
+                <p className="text-muted-foreground">
+                  I&apos;ll write SQL, query your database, and give you insights.
+                </p>
               </div>
+              <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                {suggestions.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSuggestion(q)}
+                    className="text-sm border border-border text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3"
+              >
+                {message.role === "user" ? (
+                  <div className="flex justify-end">
+                    <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%]">
+                      <p className="text-sm">
+                        {message.parts
+                          .filter((p) => p.type === "text")
+                          .map((p: any) => p.text)
+                          .join("")}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {message.parts.map((part: any, i: number) => {
+                      if (part.type === "text" && part.text) {
+                        return (
+                          <div
+                            key={i}
+                            className="prose prose-sm dark:prose-invert max-w-none prose-table:border-collapse prose-th:border prose-th:border-border prose-td:border prose-td:border-border prose-th:px-3 prose-th:py-1.5 prose-td:px-3 prose-td:py-1.5 prose-th:bg-secondary prose-th:text-left prose-th:text-xs prose-th:font-medium prose-th:uppercase"
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: formatMarkdown(part.text) }} />
+                          </div>
+                        );
+                      }
+                      if (part.type === "tool-invocation") {
+                        return <ToolCallResult key={part.toolInvocation.toolCallId} part={part} />;
+                      }
+                      if (part.type.startsWith("tool-")) {
+                        return <ToolCallResult key={i} part={part} />;
+                      }
+                      return null;
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant") && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Thinking...
             </div>
-          </div>
-          <ProjectInfo />
-        </motion.div>
+          )}
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-border p-4 shrink-0">
+        <form
+          id="chat-form"
+          onSubmit={handleFormSubmit}
+          className="max-w-3xl mx-auto flex items-center gap-2"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about your data..."
+            className="flex-1 bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            disabled={isLoading}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || !input.trim()}
+            className="rounded-xl h-10 w-10 shrink-0"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </form>
       </div>
     </div>
   );
+}
+
+function ToolCallResult({ part }: { part: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showTable, setShowTable] = useState(false);
+
+  const invocation = part.toolInvocation ?? part;
+  const isComplete = invocation.state === "result" || invocation.state === "output-available";
+  const result = isComplete ? (invocation.result ?? invocation.output) : null;
+  const sql = invocation.args?.sql ?? invocation.input?.sql;
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden bg-card">
+      {/* SQL toggle */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${isComplete ? (result?.success ? "bg-emerald-500" : "bg-red-500") : "bg-amber-500 animate-pulse"}`} />
+        {isComplete
+          ? result?.success
+            ? `Query returned ${result.total_rows} row${result.total_rows === 1 ? "" : "s"}`
+            : "Query failed"
+          : "Running query..."}
+        {expanded ? <ChevronDown className="h-3 w-3 ml-auto" /> : <ChevronRight className="h-3 w-3 ml-auto" />}
+      </button>
+
+      {/* SQL */}
+      {expanded && sql && (
+        <div className="border-t border-border px-3 py-2 bg-secondary/50">
+          <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{sql}</pre>
+        </div>
+      )}
+
+      {/* Results preview */}
+      {isComplete && result?.success && result.rows.length > 0 && (
+        <div className="border-t border-border">
+          <button
+            onClick={() => setShowTable(!showTable)}
+            className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            {showTable ? "Hide" : "Show"} results table
+            {showTable ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+          {showTable && (
+            <div className="max-h-64 overflow-auto">
+              <Table className="text-xs">
+                <TableHeader>
+                  <TableRow>
+                    {result.columns.map((col: string) => (
+                      <TableHead key={col} className="px-3 py-1.5 text-xs font-medium uppercase whitespace-nowrap">
+                        {col.replace(/_/g, " ")}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {result.rows.map((row: any, i: number) => (
+                    <TableRow key={i}>
+                      {result.columns.map((col: string) => (
+                        <TableCell key={col} className="px-3 py-1.5 whitespace-nowrap">
+                          {formatValue(row[col])}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Error */}
+      {isComplete && !result?.success && (
+        <div className="border-t border-border px-3 py-2 text-xs text-red-500">
+          {result?.error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatValue(value: any): string {
+  if (value === null || value === undefined) return "\u2014";
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) return value.toLocaleString();
+    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  return String(value);
+}
+
+function formatMarkdown(text: string): string {
+  text = text.replace(
+    /\|(.+)\|\n\|[-| :]+\|\n((\|.+\|\n?)+)/g,
+    (_, header, body) => {
+      const headers = header.split("|").map((h: string) => h.trim()).filter(Boolean);
+      const rows = body.trim().split("\n").map((row: string) =>
+        row.split("|").map((cell: string) => cell.trim()).filter(Boolean)
+      );
+      return `<table><thead><tr>${headers.map((h: string) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((row: string[]) => `<tr>${row.map((cell: string) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    }
+  );
+  text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, _l, code) => `<pre class="bg-secondary rounded-md p-3 text-xs overflow-x-auto"><code>${escapeHtml(code.trim())}</code></pre>`);
+  text = text.replace(/`([^`]+)`/g, '<code class="bg-secondary px-1 py-0.5 rounded text-xs">$1</code>');
+  text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-3 mb-1">$1</h3>');
+  text = text.replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold mt-3 mb-1">$1</h2>');
+  text = text.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>');
+  text = text.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>');
+  text = text.replace(/\n\n/g, "<br/><br/>");
+  text = text.replace(/\n/g, "<br/>");
+  return text;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

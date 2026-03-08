@@ -1,4 +1,4 @@
-import { Config, Result, Unicorn } from "@/lib/types";
+import { Config, Result } from "@/lib/types";
 import { DynamicChart } from "./dynamic-chart";
 import { SkeletonCard } from "./skeleton-card";
 import {
@@ -92,7 +92,7 @@ export const Results = ({
                       >
                         {formatCellValue(
                           column,
-                          company[column as keyof Unicorn],
+                          company[column],
                         )}
                       </TableCell>
                     ))}
