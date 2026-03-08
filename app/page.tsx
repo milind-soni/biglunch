@@ -8,15 +8,8 @@ import { Send, Loader2, ChevronDown, ChevronRight, Settings } from "lucide-react
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DataWidget } from "@/components/data-widget";
 import Link from "next/link";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 
 export default function Page() {
   const [input, setInput] = useState("");
@@ -200,7 +193,6 @@ export default function Page() {
 
 function ToolCallResult({ part }: { part: any }) {
   const [expanded, setExpanded] = useState(false);
-  const [showTable, setShowTable] = useState(false);
 
   const invocation = part.toolInvocation ?? part;
   const isComplete = invocation.state === "result" || invocation.state === "output-available";
@@ -230,43 +222,14 @@ function ToolCallResult({ part }: { part: any }) {
         </div>
       )}
 
-      {/* Results preview */}
+      {/* Data widget with table/chart toggle */}
       {isComplete && result?.success && result.rows.length > 0 && (
-        <div className="border-t border-border">
-          <button
-            onClick={() => setShowTable(!showTable)}
-            className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            {showTable ? "Hide" : "Show"} results table
-            {showTable ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-          {showTable && (
-            <div className="max-h-64 overflow-auto">
-              <Table className="text-xs">
-                <TableHeader>
-                  <TableRow>
-                    {result.columns.map((col: string) => (
-                      <TableHead key={col} className="px-3 py-1.5 text-xs font-medium uppercase whitespace-nowrap">
-                        {col.replace(/_/g, " ")}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {result.rows.map((row: any, i: number) => (
-                    <TableRow key={i}>
-                      {result.columns.map((col: string) => (
-                        <TableCell key={col} className="px-3 py-1.5 whitespace-nowrap">
-                          {formatValue(row[col])}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
+        <DataWidget
+          columns={result.columns}
+          rows={result.rows}
+          totalRows={result.total_rows}
+          visualization={result.visualization}
+        />
       )}
 
       {/* Error */}
@@ -277,15 +240,6 @@ function ToolCallResult({ part }: { part: any }) {
       )}
     </div>
   );
-}
-
-function formatValue(value: any): string {
-  if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "number") {
-    if (Number.isInteger(value)) return value.toLocaleString();
-    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  return String(value);
 }
 
 function formatMarkdown(text: string): string {

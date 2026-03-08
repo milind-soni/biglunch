@@ -7,7 +7,6 @@ export const maxDuration = 30;
 
 async function getSchemaContext(): Promise<string> {
   try {
-    // Get all tables and views
     const tables = await queryDuckDB(
       `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'main' ORDER BY table_name`
     );
@@ -20,7 +19,6 @@ async function getSchemaContext(): Promise<string> {
       const name = table.table_name as string;
       const type = table.table_type === "VIEW" ? "view" : "table";
 
-      // Get column info
       const columns = await queryDuckDB(
         `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = '${name}' ORDER BY ordinal_position`
       );
@@ -62,10 +60,17 @@ Instructions:
 2. Write valid DuckDB SQL (similar to PostgreSQL)
 3. Only write SELECT queries — never modify data
 4. After getting results, provide clear insights and analysis
-5. Use markdown tables to display data when appropriate
-6. Be concise and actionable in your analysis
-7. If you need multiple queries to answer a question, run them sequentially
-8. Today's date is 2026-03-08
+5. Be concise and actionable in your analysis
+6. If you need multiple queries to answer a question, run them sequentially
+7. Today's date is 2026-03-08
+8. Always include a visualization suggestion with your query:
+   - Use "bar" for comparing categories (top N, by category, etc.)
+   - Use "line" for time series and trends (monthly, daily, etc.)
+   - Use "pie" for part-of-whole breakdowns with fewer than 8 categories
+   - Use "area" for cumulative or stacked time series
+   - Omit visualization for single-row results or metadata queries
+   - Set xKey to the category/time column, yKeys to the numeric measure column(s)
+   - Keep the title short (3-6 words)
 
 Always query the data — never make up numbers.`,
     messages: await convertToModelMessages(messages),
@@ -75,9 +80,14 @@ Always query the data — never make up numbers.`,
           "Execute a SQL query against the DuckDB database. Only SELECT queries are allowed. Use this to answer any data questions.",
         inputSchema: z.object({
           sql: z.string().describe("The DuckDB SQL SELECT query to execute"),
+          visualization: z.object({
+            type: z.enum(["bar", "line", "area", "pie"]).describe("Chart type"),
+            xKey: z.string().describe("Column for x-axis or category labels"),
+            yKeys: z.array(z.string()).describe("Column(s) for numeric values"),
+            title: z.string().describe("Short chart title (3-6 words)"),
+          }).optional().describe("Suggested chart visualization. Include for queries that would benefit from a chart."),
         }),
-        execute: async ({ sql }) => {
-          // Safety check
+        execute: async ({ sql, visualization }) => {
           const lower = sql.trim().toLowerCase();
           if (
             !lower.startsWith("select") &&
@@ -94,6 +104,7 @@ Always query the data — never make up numbers.`,
               columns,
               rows: rows.slice(0, 100),
               total_rows: rows.length,
+              visualization: visualization ?? null,
             };
           } catch (error) {
             return {
