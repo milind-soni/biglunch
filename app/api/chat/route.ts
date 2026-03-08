@@ -1,40 +1,9 @@
 import { streamText, tool, stepCountIs, convertToModelMessages, UIMessage } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod/v4";
-import { queryDuckDB } from "@/lib/duckdb";
+import { queryDuckDB, getSchemaContext } from "@/lib/duckdb";
 
 export const maxDuration = 30;
-
-async function getSchemaContext(): Promise<string> {
-  try {
-    const tables = await queryDuckDB(
-      `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'main' ORDER BY table_name`
-    );
-
-    if (tables.length === 0) return "No tables available.";
-
-    const schemaLines: string[] = [];
-
-    for (const table of tables) {
-      const name = table.table_name as string;
-      const type = table.table_type === "VIEW" ? "view" : "table";
-
-      const columns = await queryDuckDB(
-        `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = '${name}' ORDER BY ordinal_position`
-      );
-
-      const colStr = columns
-        .map((c) => `${c.column_name} (${c.data_type})`)
-        .join(", ");
-
-      schemaLines.push(`**${name}** (${type})\nColumns: ${colStr}`);
-    }
-
-    return schemaLines.join("\n\n");
-  } catch {
-    return "Schema discovery failed. Use: SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'";
-  }
-}
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();

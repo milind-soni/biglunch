@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, ChevronDown, ChevronRight, Settings } from "lucide-react";
+import { Send, Loader2, ChevronDown, ChevronRight, Settings, Database } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,18 @@ export default function Page() {
   });
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [suggestions, setSuggestions] = useState<{ desktop: string; mobile: string }[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    fetch("/api/suggestions")
+      .then((res) => res.json())
+      .then((data) => setSuggestions(data))
+      .catch(() => {})
+      .finally(() => setSuggestionsLoading(false));
+  }, []);
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -33,14 +44,6 @@ export default function Page() {
     sendMessage({ text: q });
   };
 
-  const suggestions = [
-    "Top 5 products by revenue",
-    "Ad spend vs conversions by platform",
-    "Which ad campaign has the best ROAS?",
-    "Monthly revenue trend",
-    "Compare Shopify vs Amazon sales",
-    "Top customers by lifetime value",
-  ];
 
   return (
     <div className="flex flex-col h-dvh bg-background">
@@ -57,6 +60,11 @@ export default function Page() {
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
             DuckDB
           </span>
+          <Link href="/explore">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Explore data">
+              <Database className="h-4 w-4" />
+            </Button>
+          </Link>
           <Link href="/connections">
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Settings className="h-4 w-4" />
@@ -91,15 +99,26 @@ export default function Page() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 justify-center max-w-lg">
-                {suggestions.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSuggestion(q)}
-                    className="text-sm border border-border text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    {q}
-                  </button>
-                ))}
+                {suggestionsLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-8 bg-secondary rounded-lg animate-pulse"
+                      style={{ width: `${80 + Math.random() * 80}px` }}
+                    />
+                  ))
+                ) : (
+                  suggestions.map((q) => (
+                    <button
+                      key={q.desktop}
+                      onClick={() => handleSuggestion(q.desktop)}
+                      className="text-sm border border-border text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span className="sm:hidden">{q.mobile}</span>
+                      <span className="hidden sm:inline">{q.desktop}</span>
+                    </button>
+                  ))
+                )}
               </div>
             </motion.div>
           )}
