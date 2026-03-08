@@ -8,7 +8,7 @@ export async function GET() {
     const schema = await getSchemaContext();
 
     const { object } = await generateObject({
-      model: anthropic("claude-haiku-4-5-20251001"),
+      model: anthropic("claude-haiku-4-5"),
       schema: z.object({
         suggestions: z.array(
           z.object({

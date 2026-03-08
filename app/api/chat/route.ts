@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const schema = await getSchemaContext();
 
   const result = streamText({
-    model: anthropic("claude-sonnet-4-20250514"),
+    model: anthropic("claude-sonnet-4-6"),
     system: `You are an AI data analyst for a business called "biglunch". You have access to a DuckDB database that you can query using SQL.
 
 Available tables and views:
