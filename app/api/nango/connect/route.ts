@@ -1,17 +1,24 @@
 import { Nango } from "@nangohq/node";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
-const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY! });
+function getNango() {
+  return new Nango({ secretKey: process.env.NANGO_SECRET_KEY! });
+}
 
 // Create a connect session token for the frontend
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const { userId, email } = await req.json();
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const { data } = await nango.createConnectSession({
+    const { data } = await getNango().createConnectSession({
       tags: {
-        end_user_id: userId || "demo-user",
-        end_user_email: email || "demo@biglunch.com",
+        end_user_id: session.user.id,
+        end_user_email: session.user.email,
       },
     });
 
