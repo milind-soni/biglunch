@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.local
+data
+pipelines/.venv
+pipelines/__pycache__
+pipelines/.dlt
+.DS_Store
+*.md
