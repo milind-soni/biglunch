@@ -1,5 +1,7 @@
 import { queryDuckDB } from "@/lib/duckdb";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const tables = await queryDuckDB(
