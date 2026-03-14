@@ -27,6 +27,7 @@ const rfStyles = `
   box-shadow: none !important;
 }
 `
+import Dagre from '@dagrejs/dagre'
 import { useWorkflow } from '@/lib/workflow-context'
 import { WorkflowGraph } from '@/lib/workflow-types'
 import { AgGridReact } from 'ag-grid-react'
@@ -260,6 +261,38 @@ const nodeTypes: NodeTypes = {
 	results: ResultsNode,
 }
 
+const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {
+	table: { width: 200, height: 56 },
+	query: { width: 340, height: 200 },
+	chart: { width: 520, height: 420 },
+	results: { width: 520, height: 320 },
+}
+
+function layoutNodes(nodes: Node[], edges: Edge[]): Node[] {
+	const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
+	g.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 200, edgesep: 40 })
+
+	for (const node of nodes) {
+		const dims = NODE_DIMENSIONS[node.type || 'query'] || { width: 300, height: 200 }
+		g.setNode(node.id, { width: dims.width, height: dims.height })
+	}
+
+	for (const edge of edges) {
+		g.setEdge(edge.source, edge.target)
+	}
+
+	Dagre.layout(g)
+
+	return nodes.map((node) => {
+		const pos = g.node(node.id)
+		const dims = NODE_DIMENSIONS[node.type || 'query'] || { width: 300, height: 200 }
+		return {
+			...node,
+			position: { x: pos.x - dims.width / 2, y: pos.y - dims.height / 2 },
+		}
+	})
+}
+
 function graphToFlow(graph: WorkflowGraph): { nodes: Node[]; edges: Edge[] } {
 	const nodes: Node[] = graph.nodes.map((node) => ({
 		id: node.id,
@@ -279,7 +312,8 @@ function graphToFlow(graph: WorkflowGraph): { nodes: Node[]; edges: Edge[] } {
 		style: { stroke: 'var(--color-text-3, #aaa)', strokeWidth: 2 },
 	}))
 
-	return { nodes, edges }
+	const layouted = layoutNodes(nodes, edges)
+	return { nodes: layouted, edges }
 }
 
 function CanvasEditorInner() {
