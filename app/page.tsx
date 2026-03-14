@@ -122,7 +122,7 @@ export default function Page() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between shrink-0">
+      <header className="border-b border-border px-6 py-3 flex items-center justify-between shrink-0 relative">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-foreground">biglunch</h1>
           <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
@@ -130,10 +130,10 @@ export default function Page() {
           </span>
         </div>
         {/* View mode pill toggle */}
-        <div className="flex items-center bg-secondary rounded-full p-0.5">
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-secondary rounded-full p-0.5">
           <button
             onClick={() => setViewMode("chat")}
-            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+            className={`px-4 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer min-w-[52px] ${
               viewMode === "chat"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -143,7 +143,7 @@ export default function Page() {
           </button>
           <button
             onClick={() => setViewMode("canvas")}
-            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+            className={`px-4 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer min-w-[64px] ${
               viewMode === "canvas"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
