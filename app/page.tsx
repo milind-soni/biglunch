@@ -4,12 +4,22 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, ChevronDown, ChevronRight, Settings, Database } from "lucide-react";
+import { Send, Loader2, ChevronDown, ChevronRight, Settings, Database, LogOut, Trash2 } from "lucide-react";
+import { useRef } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataWidget } from "@/components/data-widget";
+import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useWorkflow } from "@/lib/workflow-context";
+import dynamic from "next/dynamic";
+
+const CanvasEditor = dynamic(
+  () => import("@/components/canvas-editor").then((m) => m.CanvasEditor),
+  { ssr: false }
+);
 
 export default function Page() {
   const [input, setInput] = useState("");
@@ -17,16 +27,80 @@ export default function Page() {
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
   const { theme, setTheme } = useTheme();
+  const { data: session } = authClient.useSession();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [suggestions, setSuggestions] = useState<{ desktop: string; mobile: string }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"chat" | "canvas">("chat");
+  const { graph, addQueryExecution, clearGraph } = useWorkflow();
+  const trackedToolCalls = useRef<Set<string>>(new Set());
+
+  // Capture completed tool invocations and add to workflow graph
+  useEffect(() => {
+    for (const message of messages) {
+      if (message.role !== 'assistant') continue;
+      // Find the preceding user message to get the question
+      const msgIndex = messages.indexOf(message);
+      const userMsg = messages.slice(0, msgIndex).reverse().find(m => m.role === 'user');
+      const question = userMsg?.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '';
+
+      for (const part of message.parts) {
+        if (!part.type.startsWith('tool-')) continue;
+        const p = part as any;
+        // Support both old 'tool-invocation' and new 'tool-<name>' SDK formats
+        const inv = p.toolInvocation ?? p;
+        const toolCallId = inv.toolCallId ?? p.toolCallId;
+        const state = inv.state ?? p.state;
+        console.log('[workflow] tool part:', { type: part.type, toolCallId, state, keys: Object.keys(p) });
+        if (!toolCallId || trackedToolCalls.current.has(toolCallId)) continue;
+        if (state !== 'result' && state !== 'output-available' && state !== 'complete') continue;
+        const result = inv.result ?? inv.output ?? p.result ?? p.output;
+        console.log('[workflow] result:', { success: result?.success, keys: result ? Object.keys(result) : null });
+        if (!result?.success) continue;
+
+        trackedToolCalls.current.add(toolCallId);
+        addQueryExecution({
+          question,
+          sql: inv.args?.sql || inv.input?.sql || p.args?.sql || '',
+          toolCallId,
+          result: {
+            columns: result.columns || [],
+            rows: result.rows || [],
+            totalRows: result.total_rows || 0,
+            visualization: result.visualization || null,
+          },
+        });
+      }
+    }
+  }, [messages, addQueryExecution]);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const cached = localStorage.getItem("suggestions");
+    if (cached) {
+      setSuggestions(JSON.parse(cached));
+      setSuggestionsLoading(false);
+    }
     fetch("/api/suggestions")
       .then((res) => res.json())
-      .then((data) => setSuggestions(data))
+      .then((data) => {
+        setSuggestions(data);
+        localStorage.setItem("suggestions", JSON.stringify(data));
+      })
       .catch(() => {})
       .finally(() => setSuggestionsLoading(false));
   }, []);
@@ -55,21 +129,43 @@ export default function Page() {
             poc
           </span>
         </div>
+        {/* View mode pill toggle */}
+        <div className="flex items-center bg-secondary rounded-full p-0.5">
+          <button
+            onClick={() => setViewMode("chat")}
+            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+              viewMode === "chat"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => setViewMode("canvas")}
+            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+              viewMode === "canvas"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Canvas
+            {mounted && graph.nodes.length > 0 && (
+              <span className="ml-1 text-[10px] text-muted-foreground">{graph.nodes.length}</span>
+            )}
+          </button>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-            DuckDB
-          </span>
           <Link href="/explore">
             <Button variant="ghost" size="icon" className="h-8 w-8" title="Explore data">
               <Database className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/connections">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+          {viewMode === "canvas" && graph.nodes.length > 0 && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Clear canvas" onClick={clearGraph}>
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -78,11 +174,62 @@ export default function Page() {
           >
             {mounted ? (theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />) : <Sun className="h-4 w-4" />}
           </Button>
+          {session?.user && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="flex items-center cursor-pointer"
+              >
+                {session.user.image ? (
+                  <img src={session.user.image} alt="" className="h-7 w-7 rounded-full ring-2 ring-transparent hover:ring-border transition-all" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium hover:opacity-80 transition-opacity">
+                    {(session.user.name || session.user.email || "?")[0].toUpperCase()}
+                  </div>
+                )}
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium text-foreground truncate">{session.user.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
+                  </div>
+                  <Link
+                    href="/connections"
+                    onClick={() => setShowMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      authClient.signOut({
+                        fetchOptions: { onSuccess: () => router.push("/login") },
+                      });
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Canvas view */}
+      {viewMode === "canvas" && (
+        <div className="flex-1">
+          <CanvasEditor />
+        </div>
+      )}
+
+      {/* Chat view */}
+      <div className={`flex-1 overflow-y-auto ${viewMode !== "chat" ? "hidden" : ""}`}>
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           {messages.length === 0 && (
             <motion.div
@@ -178,34 +325,36 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border p-4 shrink-0">
-        <form
-          id="chat-form"
-          onSubmit={handleFormSubmit}
-          className="max-w-3xl mx-auto flex items-center gap-2"
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your data..."
-            className="flex-1 bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            disabled={isLoading}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !input.trim()}
-            className="rounded-xl h-10 w-10 shrink-0"
+      {/* Input - chat mode only */}
+      {viewMode === "chat" && (
+        <div className="border-t border-border p-4 shrink-0">
+          <form
+            id="chat-form"
+            onSubmit={handleFormSubmit}
+            className="max-w-3xl mx-auto flex items-center gap-2"
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
-      </div>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your data..."
+              className="flex-1 bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isLoading || !input.trim()}
+              className="rounded-xl h-10 w-10 shrink-0"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

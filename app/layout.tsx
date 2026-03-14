@@ -2,6 +2,7 @@ import "./globals.css";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { ThemeProvider } from "next-themes";
+import { WorkflowProvider } from "@/lib/workflow-context";
 
 export const metadata = {
   title: "biglunch",
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${GeistMono.className} ${GeistSans.className}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <WorkflowProvider>
+            {children}
+          </WorkflowProvider>
         </ThemeProvider>
       </body>
     </html>

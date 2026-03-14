@@ -31,6 +31,16 @@ function toTitleCase(str: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+function compactNumber(value: number | string): string {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (isNaN(num)) return String(value);
+  const abs = Math.abs(num);
+  if (abs >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toFixed(num % 1 === 0 ? 0 : 1);
+}
 const colors = [
   "hsl(var(--chart-1))",
   "hsl(var(--chart-2))",
@@ -88,7 +98,7 @@ export function DynamicChart({
                 position="insideBottom"
               />
             </XAxis>
-            <YAxis>
+            <YAxis tickFormatter={compactNumber}>
               <Label
                 value={toTitleCase(chartConfig.yKeys[0])}
                 angle={-90}
@@ -131,7 +141,7 @@ export function DynamicChart({
                 position="insideBottom"
               />
             </XAxis>
-            <YAxis>
+            <YAxis tickFormatter={compactNumber}>
               <Label
                 value={toTitleCase(chartConfig.yKeys[0])}
                 angle={-90}
@@ -164,7 +174,7 @@ export function DynamicChart({
           <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={chartConfig.xKey} />
-            <YAxis />
+            <YAxis tickFormatter={compactNumber} />
             <ChartTooltip content={<ChartTooltipContent />} />
             {chartConfig.legend && <Legend />}
             {chartConfig.yKeys.map((key, index) => (
