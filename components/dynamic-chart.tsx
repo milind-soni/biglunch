@@ -105,7 +105,7 @@ export function DynamicChart({
                 position="insideLeft"
               />
             </YAxis>
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             {chartConfig.legend && <Legend />}
             {chartConfig.yKeys.map((key, index) => (
               <Bar
@@ -148,7 +148,7 @@ export function DynamicChart({
                 position="insideLeft"
               />
             </YAxis>
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             {chartConfig.legend && <Legend />}
             {useTransformedData
               ? lineFields.map((key, index) => (
@@ -175,7 +175,7 @@ export function DynamicChart({
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={chartConfig.xKey} />
             <YAxis tickFormatter={compactNumber} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             {chartConfig.legend && <Legend />}
             {chartConfig.yKeys.map((key, index) => (
               <Area
@@ -206,7 +206,7 @@ export function DynamicChart({
                 />
               ))}
             </Pie>
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
             {chartConfig.legend && <Legend />}
           </PieChart>
         );

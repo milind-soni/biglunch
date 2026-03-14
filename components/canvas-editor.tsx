@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
 	ReactFlow,
 	Background,
@@ -11,11 +11,22 @@ import {
 	type Node,
 	type Edge,
 	type NodeTypes,
+	type NodeChange,
 	useReactFlow,
 	ReactFlowProvider,
 	BackgroundVariant,
+	applyNodeChanges,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+
+const rfStyles = `
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+`
 import { useWorkflow } from '@/lib/workflow-context'
 import { WorkflowGraph } from '@/lib/workflow-types'
 import { AgGridReact } from 'ag-grid-react'
@@ -275,9 +286,18 @@ function CanvasEditorInner() {
 	const { graph } = useWorkflow()
 	const { fitView } = useReactFlow()
 
-	const { nodes, edges } = useMemo(() => graphToFlow(graph), [graph])
+	const initial = useMemo(() => graphToFlow(graph), [graph])
+	const [nodes, setNodes] = useState<Node[]>(initial.nodes)
+	const edges = initial.edges
 
-	const onNodesChange = useCallback(() => {}, [])
+	useEffect(() => {
+		setNodes(graphToFlow(graph).nodes)
+	}, [graph])
+
+	const onNodesChange = useCallback(
+		(changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+		[]
+	)
 
 	return (
 		<ReactFlow
@@ -312,6 +332,7 @@ function CanvasEditorInner() {
 export function CanvasEditor() {
 	return (
 		<div style={{ width: '100%', height: '100%' }}>
+			<style>{rfStyles}</style>
 			<ReactFlowProvider>
 				<CanvasEditorInner />
 			</ReactFlowProvider>

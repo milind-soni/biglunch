@@ -31,10 +31,10 @@ const WorkflowContext = createContext<WorkflowContextValue | null>(null)
 
 const STORAGE_KEY = 'biglunch-workflow'
 const TABLE_X = 50
-const QUERY_X = 400
-const OUTPUT_X = 800
-const ROW_GAP = 600
-const OUTPUT_GAP = 480
+const QUERY_X = 450
+const OUTPUT_X = 1000
+const ROW_GAP = 1200
+const OUTPUT_GAP = 800
 
 function loadGraph(): WorkflowGraph {
 	if (typeof window === 'undefined') return { nodes: [], edges: [] }
